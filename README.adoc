@@ -1,0 +1,92 @@
+= Spring Boot application sample with plugins structure
+
+It's an application base on Spring Boot 1.4 and handle to you used a sub functionality under a plugin module.
+
+== Structure
+
+[source,bash]
+----
+spring-plugins
+├───api                 //1
+├───app                 //2
+├───dist                //3
+└───plugins             //4
+    ├───plugin-one
+    └───plugin-two
+----
+<1> Contain commons API files for all plugins (ex. interfaces or configuration)
+<2> Main Spring Boot application normally only the main class
+<3> Distribution directory build with the `build_and_run.bat` script
+<4> Put yours plugins here
+
+== Adding new plugin
+
+* Create a new Maven module under  `plugins` directory and update pom.xml aggregator:
+
+[source,xml]
+.plugins/pom.xml
+----
+<modules>
+    <module>plugin-one</module>
+    <module>plugin-two</module>
+    <module>YOUR PLUGIN</module>
+</modules>
+----
+
+* Exclude your plugin in main application package:
+
+
+[source,xml]
+.app/pom.xml
+----
+<plugin>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-maven-plugin</artifactId>
+    <configuration>
+        <layout>ZIP</layout>
+        <excludeArtifactIds>
+            plugin-one
+            plugin-two
+            YOUR PLUGIN
+        </excludeArtifactIds>
+    </configuration>
+    ...
+----
+
+* Configuration properties
+
+You can add a specific properties file YAML for your plugin with a key suffix in filename to avoid conflict with main `application.yml`
+Example: `application-your-plugin.yml`
+
+Then you can used http://docs.spring.io/autorepo/docs/spring-boot/current/reference/html/boot-features-profiles.html[Spring Profile activation]
+And active the profile `your-plugin`:
+
+
+[source,yaml]
+.app/main/resources/application.yml
+----
+loader:
+  path: /lib
+spring:
+  profiles:
+    active: plugin-one, plugin-two, your-plugin
+----
+
+NOTE: `loader.path` tell to spring boot to include all *.zip under lib directory in the Classpath, http://docs.spring.io/spring-boot/docs/current/reference/html/executable-jar.html#executable-jar-property-launcher-features[see]
+
+Optional:
+
+Add used @Profile("your-plugin") in main class configuration of your plugin to avoid to load class
+
+=== Build and run
+
+* Build the project with `mvnw.cmd clean package`
+* Copy main app jar under `\dist`
+* Copy all plugins jar under `dist\lib`
+* Run application with `java -Dloader.path="lib/" -jar app-0.0.1-SNAPSHOT.jar` under `/dist`
+
+NOTE:
+----
+* You can adapt and use the script `build_and_run.bat`
+* Only plugins under /lib will be loaded by Spring boot so avoid implicit dependencies from your plugin to `app` classes
+----
